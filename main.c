@@ -13,8 +13,9 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
-#include "bmp280_defs.h"
 #include "bmp280.h"
+#include "bmp280_defs.h"
+
 
 // TWI instance ID
 #define TWI_INSTANCE_ID     0
@@ -155,10 +156,8 @@ void print_rslt(const char api_name[], int8_t rslt)
     }
 }
 
-void BMP280_setup(void)
+void bmp280_setup(void)
 {
-    int8_t rslt;  // error message from bme280 driver functions
-
     /* Map the delay function pointer with the function responsible for implementing the delay */
     bmp.delay_ms = nrf_delay_ms;
 
@@ -171,9 +170,6 @@ void BMP280_setup(void)
     /* Map the I2C read & write function pointer with the functions responsible for I2C bus transfer */
     bmp.read = i2c_reg_read;
     bmp.write = i2c_reg_write;
-
-    rslt = bmp280_init(&bmp);
-    print_rslt(" bmp280_init status", rslt);
 }
 
 //==========================================================
@@ -262,8 +258,8 @@ static void read_sensor_data()
     m_xfer_done = false;
 
     /* Read 1 byte from the specified address - skip 3 bits dedicated for fractional part of temperature. */
-    ret_code_t err_code = nrf_drv_twi_rx(&m_twi, LM75B_ADDR, &m_sample, sizeof(m_sample));
-    APP_ERROR_CHECK(err_code);
+    /* ret_code_t err_code = nrf_drv_twi_rx(&m_twi, LM75B_ADDR, &m_sample, sizeof(m_sample));
+    APP_ERROR_CHECK(err_code); */
 }
 
 /**
@@ -271,13 +267,17 @@ static void read_sensor_data()
  */
 int main(void)
 {
+    int8_t rslt;  // error message from bme280 driver functions
+    
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 
     NRF_LOG_INFO("\r\nTWI sensor example started.");
     NRF_LOG_FLUSH();
     twi_init();
-    BMP280_setup();
+    bmp280_setup();
+    rslt = bmp280_init(&bmp);
+    print_rslt(" bmp280_init status", rslt);
 
     //LM75B_set_mode();
 

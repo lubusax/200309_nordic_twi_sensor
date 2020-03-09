@@ -109,7 +109,7 @@ int8_t bmp280_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len, const s
  * @brief This API writes the given data to the register addresses
  * of the sensor.
  */
-int8_t bmp280_set_regs(uint8_t *reg_addr, const uint8_t *reg_data, uint8_t len, const struct bmp280_dev *dev)
+int8_t bmp280_set_regs(uint8_t *reg_addr, const uint8_t *reg_data,uint8_t len, const struct bmp280_dev *dev)
 {
     int8_t rslt;
     uint8_t temp_buff[8]; /* Typically not to write more than 4 registers */
@@ -635,7 +635,8 @@ static int8_t null_ptr_check(const struct bmp280_dev *dev)
  * @brief This internal API interleaves the register addresses and respective
  * register data for a burst write
  */
-static void interleave_data(const uint8_t *reg_addr, uint8_t *temp_buff, const uint8_t *reg_data, uint8_t len)
+static void interleave_data(const uint8_t *reg_addr, uint8_t *temp_buff,
+                         const uint8_t *reg_data, uint8_t len)
 {
     uint8_t index;
 
