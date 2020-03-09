@@ -158,6 +158,8 @@ void print_rslt(const char api_name[], int8_t rslt)
 
 void bmp280_setup(void)
 {
+    int8_t rslt;  // error message from bme280 driver functions
+    
     /* Map the delay function pointer with the function responsible for implementing the delay */
     bmp.delay_ms = nrf_delay_ms;
 
@@ -170,6 +172,9 @@ void bmp280_setup(void)
     /* Map the I2C read & write function pointer with the functions responsible for I2C bus transfer */
     bmp.read = i2c_reg_read;
     bmp.write = i2c_reg_write;
+
+    rslt = bmp280_init(&bmp);
+    print_rslt(" bmp280_init status", rslt);
 }
 
 //==========================================================
@@ -266,9 +271,7 @@ static void read_sensor_data()
  * @brief Function for main application entry.
  */
 int main(void)
-{
-    int8_t rslt;  // error message from bme280 driver functions
-    
+{   
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 
@@ -276,9 +279,7 @@ int main(void)
     NRF_LOG_FLUSH();
     twi_init();
     bmp280_setup();
-    rslt = bmp280_init(&bmp);
-    print_rslt(" bmp280_init status", rslt);
-
+    
     //LM75B_set_mode();
 
     while (true)
