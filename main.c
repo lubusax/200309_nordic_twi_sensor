@@ -13,6 +13,9 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#include "bmp280_defs.h"
+#include "bmp280.h"
+
 /* TWI instance ID. */
 #define TWI_INSTANCE_ID     0
 
