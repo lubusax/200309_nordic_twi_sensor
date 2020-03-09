@@ -40,28 +40,10 @@ static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 static uint8_t m_sample;
 
 //==========================================================
-// BMP280 Sensor - Specific variables and functions
+// BMP280 Sensor - Specific variables and functions - BEGIN
 //==========================================================
 
-int8_t  i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
-int8_t  i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
-
-int8_t rslt;  // error message from bme280 driver functions
-
 struct bmp280_dev bmp;
-
-/* Map the delay function pointer with the function responsible for implementing the delay */
-bmp.delay_ms = nrf_delay_ms;
-
-/* Assign device I2C address based on the status of SDO pin (GND for PRIMARY(0x76) & VDD for SECONDARY(0x77)) */
-bmp.dev_id = BMP280_I2C_ADDR_PRIM;
-
-/* Select the interface mode as I2C */
-bmp.intf = BMP280_I2C_INTF;
-
-/* Map the I2C read & write function pointer with the functions responsible for I2C bus transfer */
-bmp.read = i2c_reg_read;
-bmp.write = i2c_reg_write;
 
 /*!
  *  @brief Function for writing the sensor's registers through I2C bus.
@@ -131,6 +113,32 @@ void print_rslt(const char api_name[], int8_t rslt)
         }
     }
 }
+
+void BMP280_setup(void)
+{
+    int8_t rslt;  // error message from bme280 driver functions
+
+    /* Map the delay function pointer with the function responsible for implementing the delay */
+    bmp.delay_ms = nrf_delay_ms;
+
+    /* Assign device I2C address based on the status of SDO pin (GND for PRIMARY(0x76) & VDD for SECONDARY(0x77)) */
+    bmp.dev_id = BMP280_I2C_ADDR_PRIM;
+
+    /* Select the interface mode as I2C */
+    bmp.intf = BMP280_I2C_INTF;
+
+    /* Map the I2C read & write function pointer with the functions responsible for I2C bus transfer */
+    bmp.read = i2c_reg_read;
+    bmp.write = i2c_reg_write;
+
+    rslt = bmp280_init(&bmp);
+    print_rslt(" bmp280_init status", rslt);
+}
+
+//==========================================================
+// END - END ---- BMP280 - Specific variables and functions 
+//==========================================================
+
 
 /**
  * @brief Function for setting active mode on MMA7660 accelerometer.
@@ -227,9 +235,6 @@ int main(void)
     NRF_LOG_FLUSH();
     twi_init();
     //LM75B_set_mode();
-
-    rslt = bmp280_init(&bmp);
-    print_rslt(" bmp280_init status", rslt);
 
     while (true)
     {
