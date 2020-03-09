@@ -16,19 +16,23 @@
 #include "bmp280_defs.h"
 #include "bmp280.h"
 
-/* TWI instance ID. */
+// TWI instance ID
 #define TWI_INSTANCE_ID     0
 
-/* Common addresses definition for temperature sensor. */
-#define LM75B_ADDR          (0x90U >> 1)
+// Common addresses definition for temperature sensor
+#define BMP280_I2C_ADDR         BMP280_I2C_ADDR_PRIM
 
-#define LM75B_REG_TEMP      0x00U
+// Nordic functions use this address (shifted)
+// BMP280 driver uses the original address (not shifted)  
+#define BMP280_ADDR          ( BMP280_I2C_ADDR >> 1) 
+
+/* #define LM75B_REG_TEMP      0x00U
 #define LM75B_REG_CONF      0x01U
 #define LM75B_REG_THYST     0x02U
 #define LM75B_REG_TOS       0x03U
 
-/* Mode for LM75B. */
-#define NORMAL_MODE 0U
+//* Mode for LM75B. 
+#define NORMAL_MODE 0U */
 
 /* Indicates if operation on TWI has ended. */
 static volatile bool m_xfer_done = false;
@@ -47,6 +51,7 @@ struct bmp280_dev bmp;
 
 /*!
  *  @brief Function for writing the sensor's registers through I2C bus.
+ * Implement the I2C write routine according to the Nordic pca100056. 
  *
  *  @param[in] i2c_addr : sensor I2C address.
  *  @param[in] reg_addr : Register address.
@@ -58,11 +63,47 @@ struct bmp280_dev bmp;
  *  @retval >0 -> Failure Info
  *
  */
-int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length)
+int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
+                     uint8_t *reg_data, uint16_t length)
 {
 
-    /* Implement the I2C write routine according to the target machine. */
-    return -1;
+    int8_t rslt;
+    uint8_t index;
+    ret_code_t err_code;
+    // Nordic functions use this address (shifted)
+    // BMP280 driver uses the original address (not shifted)  
+    uint8_t bmp280_addr = ( i2c_addr >> 1); 
+
+    
+
+    uint8_t temp_buff[8]; // Typically not to write more than 4 registers
+
+    temp_buff[0] = reg_addr;
+    temp_buff[1] = reg_data[0];
+
+    if (length > 1)
+    {
+        for (index = 1; index < length; index = index+2) // length is always odd:1,3,5...
+        {
+            temp_buff[index + 1]  = reg_data[index];
+            temp_buff[index + 2]  = reg_data[index + 1];
+        }
+    }
+    
+    m_xfer_done = false;
+
+    err_code = nrf_drv_twi_tx(&m_twi, bmp280_addr,
+                             temp_buff, (length+1) , false);
+    APP_ERROR_CHECK(err_code);
+    while (m_xfer_done == false);
+
+    rslt = BMP280_OK;
+    if (err_code)
+    {
+        rslt = BMP280_E_COMM_FAIL;
+    }
+
+    return rslt;
 }
 
 /*!
@@ -122,7 +163,7 @@ void BMP280_setup(void)
     bmp.delay_ms = nrf_delay_ms;
 
     /* Assign device I2C address based on the status of SDO pin (GND for PRIMARY(0x76) & VDD for SECONDARY(0x77)) */
-    bmp.dev_id = BMP280_I2C_ADDR_PRIM;
+    bmp.dev_id = BMP280_I2C_ADDR;
 
     /* Select the interface mode as I2C */
     bmp.intf = BMP280_I2C_INTF;
@@ -143,23 +184,25 @@ void BMP280_setup(void)
 /**
  * @brief Function for setting active mode on MMA7660 accelerometer.
  */
-void LM75B_set_mode(void)
+
+/** void LM75B_set_mode(void)
 {
     ret_code_t err_code;
 
-    /* Writing to LM75B_REG_CONF "0" set temperature sensor in NORMAL mode. */
+    //* Writing to LM75B_REG_CONF "0" set temperature sensor in NORMAL mode. *
     uint8_t reg[2] = {LM75B_REG_CONF, NORMAL_MODE};
     err_code = nrf_drv_twi_tx(&m_twi, LM75B_ADDR, reg, sizeof(reg), false);
     APP_ERROR_CHECK(err_code);
     while (m_xfer_done == false);
 
-    /* Writing to pointer byte. */
+    /* Writing to pointer byte. 
     reg[0] = LM75B_REG_TEMP;
     m_xfer_done = false;
     err_code = nrf_drv_twi_tx(&m_twi, LM75B_ADDR, reg, 1, false);
     APP_ERROR_CHECK(err_code);
     while (m_xfer_done == false);
-}
+} 
+*/
 
 /**
  * @brief Function for handling data from temperature sensor.
@@ -234,6 +277,8 @@ int main(void)
     NRF_LOG_INFO("\r\nTWI sensor example started.");
     NRF_LOG_FLUSH();
     twi_init();
+    BMP280_setup();
+
     //LM75B_set_mode();
 
     while (true)
