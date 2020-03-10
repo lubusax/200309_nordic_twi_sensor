@@ -57,22 +57,17 @@ struct bmp280_dev bmp;
  *
  */
 /* Writing is done by sending the slave address in write mode (RW = ‘0’),
-resulting in slave address 111011X0 (‘X’ is determined by state of SDO pin.
+resulting in slave address 111011X0 (‘X’ is determined by state of SDO pin.)
 Then the master sends pairs of register addresses and register data.
 The transaction is ended by a stop condition.  */
 
 int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
                      uint8_t *reg_data, uint16_t length)
 {
-
     int8_t rslt;
     uint8_t index;
     ret_code_t err_code;
-    // Nordic functions use this address (shifted)
-    // BMP280 driver uses the original address (not shifted)  
-    uint8_t bmp280_addr = ( i2c_addr << 1); 
-
-    
+    uint8_t bmp280_write_addr = ( i2c_addr << 1); 
 
     uint8_t temp_buff[8]; // Typically not to write more than 4 registers
 
@@ -90,7 +85,7 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
     
     m_xfer_done = false;
 
-    err_code = nrf_drv_twi_tx(&m_twi, bmp280_addr,
+    err_code = nrf_drv_twi_tx(&m_twi, bmp280_write_addr,
                              temp_buff, (length+1) , false);
     APP_ERROR_CHECK(err_code);
     while (m_xfer_done == false);
@@ -117,11 +112,29 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
  *  @retval >0 -> Failure Info
  *
  */
-int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length)
-{
+/* To be able to read registers, first
+the register address must be sent
+in write mode (slave address 111011X0).
+Then either a stop or a repeated start condition must be generated.
+After this the slave is addressed in read mode (RW = ‘1’)
+at address 111011X1,
+after which the slave sends out data from
+auto-incremented register addresses until
+a NOACKM and stop condition occurs. */
 
-    /* Implement the I2C read routine according to the target machine. */
-    return -1;
+int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr,
+                    uint8_t *reg_data, uint16_t length)
+{/* Implement the I2C read routine according to the target machine. */
+    int8_t rslt;
+    uint8_t index;
+    ret_code_t err_code;
+    uint8_t bmp280_write_addr = ( i2c_addr << 1);
+    uint8_t bmp280_read_addr = ( i2c_addr << 1) | 0x01;
+    
+
+    uint8_t temp_buff[8]; // Typically not to write more than 4 registers
+
+    return rslt;
 }
 
 void print_rslt(const char api_name[], int8_t rslt)
