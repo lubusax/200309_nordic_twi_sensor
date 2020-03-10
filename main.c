@@ -87,10 +87,11 @@ struct bmp280_dev bmp;
                         uint8_t const *     p_data,
                         size_t              length,
                         bool                no_stop); */
+
 /* Writing is done by sending the slave address in write mode (RW = ‘0’),
-resulting in slave address 111011X0 (‘X’ is determined by state of SDO pin.)
-Then the master sends pairs of register addresses and register data.
-The transaction is ended by a stop condition.  */
+ resulting in slave address 111011X0 (‘X’ is determined by state of SDO pin.)
+ Then the master sends pairs of register addresses and register data.
+ The transaction is ended by a stop condition.  */
 
 int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
                      uint8_t *reg_data, uint16_t length)
@@ -144,14 +145,14 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
  *
  */
 /* To be able to read registers, first
-the register address must be sent
-in write mode (slave address 111011X0).
-Then either a stop or a repeated start condition must be generated.
-After this the slave is addressed in read mode (RW = ‘1’)
-at address 111011X1,
-after which the slave sends out data from
-auto-incremented register addresses until
-a NOACKM and stop condition occurs. */
+ the register address must be sent
+ in write mode (slave address 111011X0).
+ Then either a stop or a repeated start condition must be generated.
+ After this the slave is addressed in read mode (RW = ‘1’)
+ at address 111011X1,
+ after which the slave sends out data from
+ auto-incremented register addresses until
+ a NOACKM and stop condition occurs. */
 
 int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr,
                     uint8_t *reg_data, uint16_t length)
@@ -181,6 +182,7 @@ int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr,
                                 &reg_data, length);
         APP_ERROR_CHECK(err_code);
         while (m_xfer_done == false);
+
     
         if (err_code != NRFX_SUCCESS )
         {
@@ -306,9 +308,7 @@ static void read_sensor_data()
 {
     m_xfer_done = false;
 
-    /* Read 1 byte from the specified address - skip 3 bits dedicated for fractional part of temperature. */
-    /* ret_code_t err_code = nrf_drv_twi_rx(&m_twi, LM75B_ADDR, &m_sample, sizeof(m_sample));
-    APP_ERROR_CHECK(err_code); */
+
 }
 
 /**
