@@ -42,6 +42,8 @@ struct bmp280_uncomp_data   ucomp_data;
 int32_t                     temp32;
 double                      temp;
 int8_t                      rslt;//error msg -bme280 driver functions
+uint8_t                     chipSelectPin; // for I2C has to be set high
+
 
 /*!
  *  @brief Function for writing the sensor's registers through I2C bus.
@@ -121,7 +123,7 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
     
     m_xfer_done = false;
 
-    err_code = nrf_drv_twi_tx(&m_twi, i2c_addr,
+    err_code = nrf_drv_twi_tx(&m_twi, BMP280_I2C_ADDR_PRIM,
                              temp_buff, (length+1) , false);
     APP_ERROR_CHECK(err_code);
     while (m_xfer_done == false);
@@ -166,6 +168,7 @@ int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr,
     uint8_t index;
     ret_code_t err_code;
 
+
     //first the register address must be sent
     m_xfer_done = false;
     err_code = nrf_drv_twi_tx(  &m_twi, i2c_addr,
@@ -183,7 +186,7 @@ int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr,
     else
     {
         m_xfer_done = false;
-        err_code = nrf_drv_twi_rx(&m_twi, i2c_addr,
+        err_code = nrf_drv_twi_rx(&m_twi, BMP280_I2C_ADDR_PRIM,
                                 &reg_data, length);
         APP_ERROR_CHECK(err_code);
         while (m_xfer_done == false);
@@ -235,7 +238,7 @@ void bmp280_setup(void)
 
     /* Assign device I2C address based on the status of 
     SDO pin (GND for PRIMARY(0x76) & VDD for SECONDARY(0x77)) */
-    bmp.dev_id = BMP280_I2C_ADDR;
+    bmp.dev_id = BMP280_I2C_ADDR_PRIM;
 
     /* Select the interface mode as I2C */
     bmp.intf = BMP280_I2C_INTF;
