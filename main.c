@@ -36,7 +36,12 @@ static uint8_t m_sample;
 // BMP280 Sensor - Specific variables and functions - BEGIN
 //==========================================================
 
-struct bmp280_dev bmp;
+struct bmp280_dev           bmp;
+struct bmp280_config        conf;
+struct bmp280_uncomp_data   ucomp_data;
+int32_t                     temp32;
+double                      temp;
+int8_t                      rslt;//error msg -bme280 driver functions
 
 /*!
  *  @brief Function for writing the sensor's registers through I2C bus.
@@ -224,8 +229,6 @@ void print_rslt(const char api_name[], int8_t rslt)
 
 void bmp280_setup(void)
 {
-    int8_t rslt;  // error message from bme280 driver functions
-    
     /* Map the delay function pointer with the function
      responsible for implementing the delay */
     bmp.delay_ms = nrf_delay_ms;
@@ -244,21 +247,46 @@ void bmp280_setup(void)
 
     rslt = bmp280_init(&bmp);
     print_rslt(" bmp280_init status", rslt);
-}
 
+    /* Always read the current settings before writing,
+     * especially when all the configuration is not modified
+     * */
+    rslt = bmp280_get_config(&conf, &bmp);
+    print_rslt(" bmp280_get_config status", rslt);
+
+    /* configuring the temperature oversampling,
+     * filter coefficient and output data rate */
+    /* Overwrite the desired settings */
+    conf.filter     = BMP280_FILTER_COEFF_2;
+
+    /* Temperature oversampling set at 4x */
+    conf.os_temp    = BMP280_OS_4X;
+
+    /* Pressure over sampling none (disabling pressure measurement) */
+    conf.os_pres    = BMP280_OS_NONE;
+
+    /* Setting the output data rate as 1HZ(1000ms) */
+    conf.odr        = BMP280_ODR_1000_MS;
+    rslt = bmp280_set_config(&conf, &bmp);
+    print_rslt(" bmp280_set_config status", rslt);
+
+    /* Always set the power mode after setting the configuration */
+    rslt = bmp280_set_power_mode(BMP280_NORMAL_MODE, &bmp);
+    print_rslt(" bmp280_set_power_mode status", rslt);
+}
 //==========================================================
 // END - END ---- BMP280 - Specific variables and functions 
 //==========================================================
 
-
 /**
  * @brief Function for handling data from temperature sensor.
  *
- * @param[in] temp          Temperature in Celsius degrees read from sensor.
+ * @param[in] temp      Temperature in Celsius degrees
+ *                      read from sensor.
  */
 __STATIC_INLINE void data_handler(uint8_t temp)
 {
-    NRF_LOG_INFO("Temperature: %d Celsius degrees.", temp);
+    NRF_LOG_INFO("data handler - NRF_DRV_TWI_EVT_DONE", temp);
 }
 
 /**
@@ -306,9 +334,21 @@ void twi_init (void)
  */
 static void read_sensor_data()
 {
-    m_xfer_done = false;
+    /* Reading the raw data from sensor */
+    rslt = bmp280_get_uncomp_data(&ucomp_data, &bmp);
 
+    /* Getting the 32 bit compensated temperature */
+    rslt = bmp280_get_comp_temp_32bit(&temp32,
+                                ucomp_data.uncomp_temp, &bmp);
 
+    /* Getting the compensated temperature as floating point value */
+    rslt = bmp280_get_comp_temp_double(&temp,
+                                    ucomp_data.uncomp_temp, &bmp);
+    NRF_LOG_INFO("UT: %ld, T32: %ld, T: %f \r\n",
+         ucomp_data.uncomp_temp, temp32, temp);
+
+    /* Sleep time between measurements = BMP280_ODR_1000_MS */
+    bmp.delay_ms(1000);
 }
 
 /**
@@ -318,26 +358,22 @@ int main(void)
 {   
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_DEFAULT_BACKENDS_INIT();
-
     NRF_LOG_INFO("\r\nTWI sensor example started.");
     NRF_LOG_FLUSH();
     twi_init();
     bmp280_setup();
-    
-    //LM75B_set_mode();
 
     while (true)
     {
-        nrf_delay_ms(500);
+        // nrf_delay_ms(1000);
 
-        do
-        {
-            __WFE();
-        }while (m_xfer_done == false);
+        // do
+        // {
+        //     __WFE();
+        // }while (m_xfer_done == false);
 
-        read_sensor_data();
+        read_sensor_data(); // has a delay of 1 second inside
         NRF_LOG_FLUSH();
     }
 }
-
 /** @} */
