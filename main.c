@@ -27,14 +27,6 @@
 // BMP280 driver uses the original address (not shifted)  
 #define BMP280_ADDR          ( BMP280_I2C_ADDR >> 1) 
 
-/* #define LM75B_REG_TEMP      0x00U
-#define LM75B_REG_CONF      0x01U
-#define LM75B_REG_THYST     0x02U
-#define LM75B_REG_TOS       0x03U
-
-//* Mode for LM75B. 
-#define NORMAL_MODE 0U */
-
 /* Indicates if operation on TWI has ended. */
 static volatile bool m_xfer_done = false;
 
@@ -64,6 +56,11 @@ struct bmp280_dev bmp;
  *  @retval >0 -> Failure Info
  *
  */
+/* Writing is done by sending the slave address in write mode (RW = ‘0’),
+resulting in slave address 111011X0 (‘X’ is determined by state of SDO pin.
+Then the master sends pairs of register addresses and register data.
+The transaction is ended by a stop condition.  */
+
 int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
                      uint8_t *reg_data, uint16_t length)
 {
@@ -73,7 +70,7 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
     ret_code_t err_code;
     // Nordic functions use this address (shifted)
     // BMP280 driver uses the original address (not shifted)  
-    uint8_t bmp280_addr = ( i2c_addr >> 1); 
+    uint8_t bmp280_addr = ( i2c_addr << 1); 
 
     
 
@@ -131,27 +128,27 @@ void print_rslt(const char api_name[], int8_t rslt)
 {
     if (rslt != BMP280_OK)
     {
-        printf("BMP280 driver - %s\t", api_name);
+        NRF_LOG_INFO("BMP280 driver - %s\t", api_name);
         if (rslt == BMP280_E_NULL_PTR)
         {
-            printf("Error [%d] : Null pointer error\r\n", rslt);
+            NRF_LOG_INFO("Error [%d] : Null pointer error\r\n", rslt);
         }
         else if (rslt == BMP280_E_COMM_FAIL)
         {
-            printf("Error [%d] : Bus communication failed\r\n", rslt);
+            NRF_LOG_INFO("Error [%d] : Bus communication failed\r\n", rslt);
         }
         else if (rslt == BMP280_E_IMPLAUS_TEMP)
         {
-            printf("Error [%d] : Invalid Temperature\r\n", rslt);
+            NRF_LOG_INFO("Error [%d] : Invalid Temperature\r\n", rslt);
         }
         else if (rslt == BMP280_E_DEV_NOT_FOUND)
         {
-            printf("Error [%d] : Device not found\r\n", rslt);
+            NRF_LOG_INFO("Error [%d] : Device not found\r\n", rslt);
         }
         else
         {
             /* For more error codes refer "*_defs.h" */
-            printf("Error [%d] : Unknown error code\r\n", rslt);
+            NRF_LOG_INFO("Error [%d] : Unknown error code\r\n", rslt);
         }
     }
 }
@@ -160,16 +157,19 @@ void bmp280_setup(void)
 {
     int8_t rslt;  // error message from bme280 driver functions
     
-    /* Map the delay function pointer with the function responsible for implementing the delay */
+    /* Map the delay function pointer with the function
+     responsible for implementing the delay */
     bmp.delay_ms = nrf_delay_ms;
 
-    /* Assign device I2C address based on the status of SDO pin (GND for PRIMARY(0x76) & VDD for SECONDARY(0x77)) */
+    /* Assign device I2C address based on the status of 
+    SDO pin (GND for PRIMARY(0x76) & VDD for SECONDARY(0x77)) */
     bmp.dev_id = BMP280_I2C_ADDR;
 
     /* Select the interface mode as I2C */
     bmp.intf = BMP280_I2C_INTF;
 
-    /* Map the I2C read & write function pointer with the functions responsible for I2C bus transfer */
+    /* Map the I2C read & write function pointer with
+    the functions responsible for I2C bus transfer */
     bmp.read = i2c_reg_read;
     bmp.write = i2c_reg_write;
 
@@ -181,29 +181,6 @@ void bmp280_setup(void)
 // END - END ---- BMP280 - Specific variables and functions 
 //==========================================================
 
-
-/**
- * @brief Function for setting active mode on MMA7660 accelerometer.
- */
-
-/** void LM75B_set_mode(void)
-{
-    ret_code_t err_code;
-
-    //* Writing to LM75B_REG_CONF "0" set temperature sensor in NORMAL mode. *
-    uint8_t reg[2] = {LM75B_REG_CONF, NORMAL_MODE};
-    err_code = nrf_drv_twi_tx(&m_twi, LM75B_ADDR, reg, sizeof(reg), false);
-    APP_ERROR_CHECK(err_code);
-    while (m_xfer_done == false);
-
-    /* Writing to pointer byte. 
-    reg[0] = LM75B_REG_TEMP;
-    m_xfer_done = false;
-    err_code = nrf_drv_twi_tx(&m_twi, LM75B_ADDR, reg, 1, false);
-    APP_ERROR_CHECK(err_code);
-    while (m_xfer_done == false);
-} 
-*/
 
 /**
  * @brief Function for handling data from temperature sensor.
@@ -241,7 +218,7 @@ void twi_init (void)
 {
     ret_code_t err_code;
 
-    const nrf_drv_twi_config_t twi_lm75b_config = {
+    const nrf_drv_twi_config_t twi_config = {
        .scl                = ARDUINO_SCL_PIN,
        .sda                = ARDUINO_SDA_PIN,
        .frequency          = NRF_DRV_TWI_FREQ_100K,
@@ -249,7 +226,7 @@ void twi_init (void)
        .clear_bus_init     = false
     };
 
-    err_code = nrf_drv_twi_init(&m_twi, &twi_lm75b_config, twi_handler, NULL);
+    err_code = nrf_drv_twi_init(&m_twi, &twi_config, twi_handler, NULL);
     APP_ERROR_CHECK(err_code);
 
     nrf_drv_twi_enable(&m_twi);
