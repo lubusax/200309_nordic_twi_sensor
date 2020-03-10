@@ -20,12 +20,8 @@
 // TWI instance ID
 #define TWI_INSTANCE_ID     0
 
-// Common addresses definition for temperature sensor
+// Common address definition for temperature sensor
 #define BMP280_I2C_ADDR         BMP280_I2C_ADDR_PRIM
-
-// Nordic functions use this address (shifted)
-// BMP280 driver uses the original address (not shifted)  
-#define BMP280_ADDR          ( BMP280_I2C_ADDR >> 1) 
 
 /* Indicates if operation on TWI has ended. */
 static volatile bool m_xfer_done = false;
@@ -56,6 +52,41 @@ struct bmp280_dev bmp;
  *  @retval >0 -> Failure Info
  *
  */
+/**
+ * @brief Function for sending data to a TWI slave.
+ *
+ * The transmission will be stopped when an error occurs. If a transfer is ongoing,
+ * the function returns the error code @ref NRFX_ERROR_BUSY.
+ *
+ * @note This function is deprecated. Use @ref nrfx_twim_xfer instead.
+ *
+ * @note Peripherals using EasyDMA (including TWIM) require the transfer buffers
+ *       to be placed in the Data RAM region. If this condition is not met,
+ *       this function fails with the error code NRFX_ERROR_INVALID_ADDR.
+ *
+ * @param[in] p_instance Pointer to the driver instance structure.
+ * @param[in] address    Address of a specific slave device (only 7 LSB).
+ * @param[in] p_data     Pointer to a transmit buffer.
+ * @param[in] length     Number of bytes to send. Maximum possible length is
+ *                       dependent on the used SoC (see the MAXCNT register
+ *                       description in the Product Specification). The driver
+ *                       checks it with assertion.
+ * @param[in] no_stop    If set, the stop condition is not generated on the bus
+ *                       after the transfer has completed successfully (allowing
+ *                       for a repeated start in the next transfer).
+ *
+ * @retval NRFX_SUCCESS                 The procedure is successful.
+ * @retval NRFX_ERROR_BUSY              The driver is not ready for a new transfer.
+ * @retval NRFX_ERROR_INTERNAL          An unexpected transition occurred on the bus.
+ * @retval NRFX_ERROR_INVALID_ADDR      The provided buffer is not placed in the Data RAM region.
+ * @retval NRFX_ERROR_DRV_TWI_ERR_ANACK NACK is received after sending the address in polling mode.
+ * @retval NRFX_ERROR_DRV_TWI_ERR_DNACK NACK is received after sending a data byte in polling mode.
+ */
+/* nrfx_err_t nrfx_twim_tx(nrfx_twim_t const * p_instance,
+                        uint8_t             address,
+                        uint8_t const *     p_data,
+                        size_t              length,
+                        bool                no_stop); */
 /* Writing is done by sending the slave address in write mode (RW = ‘0’),
 resulting in slave address 111011X0 (‘X’ is determined by state of SDO pin.)
 Then the master sends pairs of register addresses and register data.
@@ -66,8 +97,7 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
 {
     int8_t rslt;
     uint8_t index;
-    ret_code_t err_code;
-    uint8_t bmp280_write_addr = ( i2c_addr << 1); 
+    ret_code_t err_code; 
 
     uint8_t temp_buff[8]; // Typically not to write more than 4 registers
 
@@ -85,13 +115,14 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
     
     m_xfer_done = false;
 
-    err_code = nrf_drv_twi_tx(&m_twi, bmp280_write_addr,
+    err_code = nrf_drv_twi_tx(&m_twi, i2c_addr,
                              temp_buff, (length+1) , false);
     APP_ERROR_CHECK(err_code);
     while (m_xfer_done == false);
 
     rslt = BMP280_OK;
-    if (err_code)
+
+    if (err_code != NRFX_SUCCESS )
     {
         rslt = BMP280_E_COMM_FAIL;
     }
@@ -104,7 +135,7 @@ int8_t i2c_reg_write(uint8_t i2c_addr, uint8_t reg_addr,
  *
  *  @param[in] i2c_addr : Sensor I2C address.
  *  @param[in] reg_addr : Register address.
- *  @param[out] reg_data    : Pointer to the data buffer to store the read data.
+ *  @param[out] reg_data: Pointer to the data buffer to store the read data.
  *  @param[in] length   : No of bytes to read.
  *
  *  @return Status of execution
@@ -128,11 +159,34 @@ int8_t i2c_reg_read(uint8_t i2c_addr, uint8_t reg_addr,
     int8_t rslt;
     uint8_t index;
     ret_code_t err_code;
-    uint8_t bmp280_write_addr = ( i2c_addr << 1);
-    uint8_t bmp280_read_addr = ( i2c_addr << 1) | 0x01;
-    
 
-    uint8_t temp_buff[8]; // Typically not to write more than 4 registers
+    //first the register address must be sent
+    m_xfer_done = false;
+    err_code = nrf_drv_twi_tx(  &m_twi, i2c_addr,
+                                reg_addr, 1 , false);
+    APP_ERROR_CHECK(err_code);
+    while (m_xfer_done == false);
+
+    //the slave sends out data from
+    //auto-incremented register addresses until
+    //a NOACKM and stop condition occurs
+    if (err_code != NRFX_SUCCESS )
+    {
+        rslt = BMP280_E_COMM_FAIL; 
+    }
+    else
+    {
+        m_xfer_done = false;
+        err_code = nrf_drv_twi_rx(&m_twi, i2c_addr,
+                                &reg_data, length);
+        APP_ERROR_CHECK(err_code);
+        while (m_xfer_done == false);
+    
+        if (err_code != NRFX_SUCCESS )
+        {
+            rslt = BMP280_E_COMM_FAIL; 
+        }
+    }
 
     return rslt;
 }

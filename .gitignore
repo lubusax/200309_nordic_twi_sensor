@@ -107,3 +107,5 @@ pca10056/blank/ses/Output/twi_sensor_pca10056 Release/Obj/twi_sensor_pca10056.in
 pca10056/blank/ses/Output/twi_sensor_pca10056 Release/Obj/twi_sensor_pca10056.ld
 pca10056/blank/ses/Output/twi_sensor_pca10056 Release/Obj/bmp280.d
 pca10056/blank/ses/Output/twi_sensor_pca10056 Release/Obj/bmp280.o
+main original_twi_scanner.c
+main_original_twi_sensor.c
